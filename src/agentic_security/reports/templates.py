@@ -37,7 +37,7 @@ def generate_executive_summary(
         category_text = "multiple categories"
 
     # Calculate pass rate
-    pass_rate = (
+    _pass_rate = (
         ((total_tests - total_failures) / total_tests * 100)
         if total_tests > 0
         else 0.0

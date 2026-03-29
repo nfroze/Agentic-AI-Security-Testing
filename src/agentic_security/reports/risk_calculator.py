@@ -1,6 +1,5 @@
 """Risk score calculation engine for security assessments."""
 
-from typing import Optional
 
 from agentic_security.core.base import AttackResult
 from agentic_security.core.enums import Severity

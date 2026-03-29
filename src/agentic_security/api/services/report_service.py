@@ -7,14 +7,13 @@ from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
-from ...core.enums import OWASPAgenticCategory, OWASPLLMCategory, Severity
+from ...core.enums import OWASPAgenticCategory, OWASPLLMCategory
+from ...results.models import TestResult, TestRun
 from ..schemas import (
     CategoryFinding,
     FindingBySeverity,
     ReportResponse,
-    SummaryStats,
 )
-from ...results.models import TestRun, TestResult
 
 logger = logging.getLogger(__name__)
 

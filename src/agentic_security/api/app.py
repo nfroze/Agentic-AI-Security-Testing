@@ -5,8 +5,8 @@ from contextlib import asynccontextmanager
 from typing import Optional
 
 from fastapi import FastAPI, status
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from ..attacks.registry import AttackRegistry
@@ -14,7 +14,7 @@ from ..core.exceptions import AgenticSecurityError
 from .database import Database
 from .dependencies import set_database
 from .routers import attacks, reports, targets, tests
-from .schemas import ErrorResponse, HealthResponse
+from .schemas import HealthResponse
 
 logger = logging.getLogger(__name__)
 

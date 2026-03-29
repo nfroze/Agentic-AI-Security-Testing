@@ -6,7 +6,7 @@ import time
 from pathlib import Path
 from typing import Optional
 
-from agentic_security.core.base import AttackPayload, AttackResult, Conversation
+from agentic_security.core.base import AttackPayload, AttackResult
 from agentic_security.core.enums import OWASPLLMCategory, Severity
 from agentic_security.payloads.loader import PayloadLoader
 from agentic_security.scorers.base import BaseScorer

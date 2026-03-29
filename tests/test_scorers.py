@@ -1,8 +1,7 @@
 """Tests for vulnerability scoring modules."""
 
-import pytest
 
-from agentic_security.core.scoring import PatternScorer, CanaryScorer, CompositeScorer
+from agentic_security.core.scoring import CanaryScorer, CompositeScorer, PatternScorer
 
 
 class TestPatternScorer:

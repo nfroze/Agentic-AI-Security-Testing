@@ -2,14 +2,13 @@
 
 import asyncio
 import logging
-from typing import Optional
 
+from ..attacks.base import BaseAttack
 from ..core.base import AttackResult, Conversation, TestSuiteResult
+from ..core.config import OrchestratorConfig
 from ..core.exceptions import AttackExecutionError, TokenBudgetExceededError
 from ..scorers.base import BaseScorer
 from ..targets.base import BaseTarget
-from ..attacks.base import BaseAttack
-from ..core.config import OrchestratorConfig
 from .base import BaseOrchestrator
 
 logger = logging.getLogger(__name__)

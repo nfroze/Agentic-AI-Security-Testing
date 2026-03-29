@@ -7,7 +7,7 @@ from typing import Optional
 
 import httpx
 
-from ..core.base import Conversation, Message
+from ..core.base import Conversation
 from ..core.config import TargetConfig
 from ..core.exceptions import (
     RateLimitError,

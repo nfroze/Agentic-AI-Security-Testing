@@ -1,15 +1,14 @@
 """Base orchestrator for coordinating test execution."""
 
 from abc import ABC, abstractmethod
-from typing import Optional
 from uuid import uuid4
 
+from ..attacks.base import BaseAttack
 from ..core.base import AttackResult, TestSuiteResult
 from ..core.config import OrchestratorConfig
 from ..core.exceptions import TokenBudgetExceededError
 from ..scorers.base import BaseScorer
 from ..targets.base import BaseTarget
-from ..attacks.base import BaseAttack
 
 
 class BaseOrchestrator(ABC):

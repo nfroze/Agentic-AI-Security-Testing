@@ -4,13 +4,13 @@ import asyncio
 from pathlib import Path
 from typing import Optional
 
-from ..base import BaseAttack
-from ..registry import AttackRegistry
 from ...core.base import AttackPayload, AttackResult, Conversation
 from ...core.enums import OWASPAgenticCategory, Severity
 from ...payloads.loader import PayloadLoader
 from ...scorers.base import BaseScorer
 from ...targets.base import BaseTarget
+from ..base import BaseAttack
+from ..registry import AttackRegistry
 
 
 @AttackRegistry.register

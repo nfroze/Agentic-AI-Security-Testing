@@ -1,7 +1,6 @@
 """Composite scorer combining multiple scorers with weighted confidence."""
 
 import logging
-from typing import Optional
 
 from ..core.base import AttackPayload
 from ..core.exceptions import ScorerError

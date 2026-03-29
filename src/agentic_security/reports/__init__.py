@@ -10,6 +10,8 @@ from .generator import (
 )
 from .recommendations import (
     Recommendation as RecommendationDB,
+)
+from .recommendations import (
     get_all_recommendations,
     get_recommendation,
     get_recommendations_for_categories,

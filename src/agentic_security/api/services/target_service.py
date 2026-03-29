@@ -10,10 +10,10 @@ from sqlalchemy.future import select
 from ...core.config import TargetConfig
 from ...core.enums import TargetProvider
 from ...core.exceptions import TargetConnectionError
+from ...results.models import Target
 from ...targets.base import BaseTarget
 from ...targets.openai_target import OpenAITarget
 from ..schemas import TargetCreate, TargetResponse, TargetUpdate
-from ...results.models import Target
 
 logger = logging.getLogger(__name__)
 

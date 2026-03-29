@@ -1,9 +1,10 @@
 """Tests for results storage and aggregation."""
 
-import pytest
 from datetime import datetime
 
-from agentic_security.core.results import InMemoryResultsStore, TestResult, AttackResult
+import pytest
+
+from agentic_security.core.results import AttackResult, InMemoryResultsStore, TestResult
 
 
 @pytest.fixture

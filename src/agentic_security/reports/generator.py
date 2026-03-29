@@ -1,14 +1,19 @@
 """Main report generation engine."""
 
+from __future__ import annotations
+
 import uuid
 from datetime import datetime
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
+
+if TYPE_CHECKING:
+    from agentic_security.results.store import ResultsStore
 
 from pydantic import BaseModel, Field
 
 from agentic_security.core.enums import OWASPAgenticCategory, OWASPLLMCategory, Severity
 
-from .recommendations import get_recommendation, get_recommendations_for_categories
+from .recommendations import get_recommendation
 from .risk_calculator import RiskCalculator
 from .templates import (
     generate_category_description,

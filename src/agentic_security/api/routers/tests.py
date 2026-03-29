@@ -15,7 +15,6 @@ from ..schemas import (
     TestRunResponse,
 )
 from ..services.test_service import TestService
-from ..services.report_service import ReportService
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +73,7 @@ async def list_tests(
         List of test run responses.
     """
     from sqlalchemy.future import select
+
     from ...results.models import TestRun
     from .target_service import TargetService
 
@@ -207,18 +207,18 @@ async def get_results(
         # Get category info
         from ...core.enums import OWASPAgenticCategory, OWASPLLMCategory
 
-        category_name = "Unknown"
+        _category_name = "Unknown"
         category_description = "Unknown"
 
         for cat in OWASPLLMCategory:
             if cat.code == result.payload_category:
-                category_name = cat.name_str
+                _category_name = cat.name_str
                 category_description = cat.description
                 break
 
         for cat in OWASPAgenticCategory:
             if cat.code == result.payload_category:
-                category_name = cat.name_str
+                _category_name = cat.name_str
                 category_description = cat.description
                 break
 
@@ -283,18 +283,18 @@ async def get_result_detail(
     # Get category info
     from ...core.enums import OWASPAgenticCategory, OWASPLLMCategory
 
-    category_name = "Unknown"
+    _category_name = "Unknown"
     category_description = "Unknown"
 
     for cat in OWASPLLMCategory:
         if cat.code == result.payload_category:
-            category_name = cat.name_str
+            _category_name = cat.name_str
             category_description = cat.description
             break
 
     for cat in OWASPAgenticCategory:
         if cat.code == result.payload_category:
-            category_name = cat.name_str
+            _category_name = cat.name_str
             category_description = cat.description
             break
 
