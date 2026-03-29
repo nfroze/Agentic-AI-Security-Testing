@@ -1,0 +1,56 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+.pytest_cache
+.mypy_cache
+.ruff_cache
+*.egg-info
+dist
+build
+.venv
+venv
+env
+.env
+.env.local
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Testing
+htmlcov
+.coverage
+coverage.xml
+
+# Node/Dashboard
+node_modules
+npm-debug.log
+yarn-error.log
+dashboard/build
+
+# Documentation
+docs
+*.md
+!README.md
+
+# Temporary
+tmp
+temp
+*.tmp
+
+# Project-specific
+CLAUDE.md
+screenshots
+.github
