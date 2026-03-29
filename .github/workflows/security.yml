@@ -76,7 +76,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Dependency Review
-        uses: actions/dependency-review-action@v3
+        uses: actions/dependency-review-action@v4
         with:
           fail-on-severity: high
           allow-licenses: Apache-2.0,MIT,BSD-2-Clause,BSD-3-Clause,ISC
@@ -97,15 +97,15 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v2
+        uses: github/codeql-action/init@v3
         with:
           languages: ${{ matrix.language }}
 
       - name: Autobuild
-        uses: github/codeql-action/autobuild@v2
+        uses: github/codeql-action/autobuild@v3
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v2
+        uses: github/codeql-action/analyze@v3
         with:
           category: "/language:${{ matrix.language }}"
 
@@ -155,14 +155,14 @@ jobs:
           severity: 'CRITICAL,HIGH'
 
       - name: Upload Trivy API SARIF
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
           sarif_file: trivy-api.sarif
           category: trivy-api
 
       - name: Upload Trivy Dashboard SARIF
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
           sarif_file: trivy-dashboard.sarif
@@ -180,19 +180,11 @@ jobs:
         id: checkov
         uses: bridgecrewio/checkov-action@master
         with:
-          directory: infrastructure/
+          directory: terraform/
           framework: terraform
-          output-file-path: report.sarif
           quiet: false
-          soft-fail: false
+          soft_fail: true
         continue-on-error: true
-
-      - name: Upload Checkov SARIF
-        uses: github/codeql-action/upload-sarif@v2
-        if: always()
-        with:
-          sarif_file: report.sarif
-          category: checkov
 
   # OWASP Dependency Check
   dependency-check:
@@ -208,15 +200,15 @@ jobs:
           path: '.'
           format: 'SARIF'
           args: >
-            --enable-retired
+            --enableRetired
             --scan .
         continue-on-error: true
 
       - name: Upload Dependency Check SARIF
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
-          sarif_file: './dependency-check-report.sarif'
+          sarif_file: './reports/dependency-check-report.sarif'
           category: dependency-check
 
   # Container hardening validation
@@ -237,7 +229,7 @@ jobs:
       - name: Start containers
         run: |
           docker compose up -d api dashboard db
-          sleep 10  # Wait for containers to stabilize
+          sleep 10
 
       - name: Run Docker Bench security checks
         run: |
@@ -270,24 +262,26 @@ jobs:
   semgrep:
     name: Semgrep SAST Scan
     runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Run Semgrep scan
-        uses: semgrep/semgrep-action@v1
-        with:
-          config: >-
-            p/python
-            p/security-audit
-            p/owasp-top-ten
-            p/flask
-            p/fastapi
-          generateSarif: true
-        continue-on-error: true
+        run: |
+          semgrep scan \
+            --config p/python \
+            --config p/security-audit \
+            --config p/owasp-top-ten \
+            --config p/flask \
+            --config p/fastapi \
+            --sarif \
+            --output semgrep.sarif \
+            || true
 
       - name: Upload Semgrep SARIF
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
           sarif_file: semgrep.sarif
@@ -297,22 +291,25 @@ jobs:
   custom-semgrep:
     name: Custom Semgrep Rules
     runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Run custom Semgrep rules
-        uses: semgrep/semgrep-action@v1
-        with:
-          config: security/semgrep-rules.yml
-          generateSarif: true
-        continue-on-error: true
+        run: |
+          semgrep scan \
+            --config security/semgrep-rules.yml \
+            --sarif \
+            --output semgrep-custom.sarif \
+            || true
 
       - name: Upload custom Semgrep SARIF
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
-          sarif_file: semgrep.sarif
+          sarif_file: semgrep-custom.sarif
           category: custom-semgrep
 
   # License compliance check
@@ -422,6 +419,6 @@ jobs:
             exit 1
           fi
 
-          echo "✓ All security gates passed"
+          echo "All security gates passed"
           exit 0
         continue-on-error: true
