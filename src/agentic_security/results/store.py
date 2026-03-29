@@ -2,7 +2,6 @@
 
 import asyncio
 import uuid
-from datetime import datetime
 from typing import Any, Optional
 
 from agentic_security.core.base import AttackResult, TestSuiteResult
