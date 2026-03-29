@@ -3,7 +3,7 @@
 from enum import Enum
 
 
-class Severity(str, Enum):
+class Severity(Enum):
     """Attack result severity levels."""
 
     CRITICAL = ("CRITICAL", "Immediate exploitation possible, complete system compromise")
@@ -23,7 +23,7 @@ class Severity(str, Enum):
         return self.value[1]
 
 
-class TestStatus(str, Enum):
+class TestStatus(Enum):
     """Test execution status."""
 
     PENDING = ("PENDING", "Awaiting execution")
@@ -43,7 +43,7 @@ class TestStatus(str, Enum):
         return self.value[1]
 
 
-class OWASPLLMCategory(str, Enum):
+class OWASPLLMCategory(Enum):
     """OWASP Top 10 for LLM Applications (2025)."""
 
     LLM01_PROMPT_INJECTION = (
@@ -113,7 +113,7 @@ class OWASPLLMCategory(str, Enum):
         return self.value[2]
 
 
-class OWASPAgenticCategory(str, Enum):
+class OWASPAgenticCategory(Enum):
     """OWASP Top 10 for Agentic AI Systems (2026)."""
 
     ASI01_AGENT_GOAL_HIJACK = (
@@ -183,7 +183,7 @@ class OWASPAgenticCategory(str, Enum):
         return self.value[2]
 
 
-class TargetProvider(str, Enum):
+class TargetProvider(Enum):
     """Supported target provider types."""
 
     OPENAI = ("openai", "OpenAI API or compatible (e.g., Azure OpenAI, local)")
@@ -201,7 +201,7 @@ class TargetProvider(str, Enum):
         return self.value[1]
 
 
-class ScorerType(str, Enum):
+class ScorerType(Enum):
     """Available scorer types for evaluating attack results."""
 
     PATTERN = ("pattern", "Regex/keyword pattern matching")
