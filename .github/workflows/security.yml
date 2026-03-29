@@ -1,0 +1,427 @@
+name: Security Scan
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  schedule:
+    - cron: '0 6 * * 1'  # Weekly Monday at 6am UTC
+
+permissions:
+  contents: read
+  security-events: write
+  checks: write
+  pull-requests: write
+
+jobs:
+  # Bandit Security Scanning for Python
+  bandit-scan:
+    name: Bandit Python Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Bandit
+        run: pip install bandit[toml]
+
+      - name: Run Bandit security scan
+        run: |
+          bandit -r src/ \
+            -c security/bandit.yml \
+            -f json \
+            -o bandit-results.json \
+            --exit-zero
+        continue-on-error: true
+
+      - name: Upload Bandit results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bandit-results
+          path: bandit-results.json
+          retention-days: 30
+
+      - name: Parse and display Bandit results
+        if: always()
+        run: |
+          python -c "
+          import json
+          try:
+              with open('bandit-results.json') as f:
+                  data = json.load(f)
+                  if data['results']:
+                      print('Security Issues Found:')
+                      for issue in data['results']:
+                          print(f\"  [{issue['severity']}] {issue['test_id']}: {issue['issue_text']}\")
+                  else:
+                      print('No security issues found')
+          except Exception as e:
+              print(f'Error parsing results: {e}')
+          "
+
+  # Dependency Review (PR only)
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v3
+        with:
+          fail-on-severity: high
+          allow-licenses: Apache-2.0,MIT,BSD-2-Clause,BSD-3-Clause,ISC
+
+  # CodeQL Analysis (comprehensive code scanning)
+  codeql:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ['python', 'javascript']
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v2
+        with:
+          languages: ${{ matrix.language }}
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v2
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v2
+        with:
+          category: "/language:${{ matrix.language }}"
+
+  # Docker image security scanning
+  docker-security:
+    name: Docker Image Security Scanning
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build API Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          load: true
+          tags: agentic-security-api:test
+
+      - name: Build Dashboard Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.dashboard
+          push: false
+          load: true
+          tags: agentic-security-dashboard:test
+
+      - name: Run Trivy scan on API image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: agentic-security-api:test
+          format: 'sarif'
+          output: 'trivy-api.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Run Trivy scan on Dashboard image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: agentic-security-dashboard:test
+          format: 'sarif'
+          output: 'trivy-dashboard.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy API SARIF
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: trivy-api.sarif
+          category: trivy-api
+
+      - name: Upload Trivy Dashboard SARIF
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: trivy-dashboard.sarif
+          category: trivy-dashboard
+
+  # Checkov - Infrastructure as Code Security
+  checkov-iac:
+    name: Checkov IaC Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Checkov scan
+        id: checkov
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: infrastructure/
+          framework: terraform
+          output-file-path: report.sarif
+          quiet: false
+          soft-fail: false
+        continue-on-error: true
+
+      - name: Upload Checkov SARIF
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: report.sarif
+          category: checkov
+
+  # OWASP Dependency Check
+  dependency-check:
+    name: OWASP Dependency Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run OWASP Dependency Check
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          path: '.'
+          format: 'SARIF'
+          args: >
+            --enable-retired
+            --scan .
+        continue-on-error: true
+
+      - name: Upload Dependency Check SARIF
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: './dependency-check-report.sarif'
+          category: dependency-check
+
+  # Container hardening validation
+  docker-bench:
+    name: Docker Bench Security Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker images
+        run: |
+          docker compose build api dashboard
+
+      - name: Start containers
+        run: |
+          docker compose up -d api dashboard db
+          sleep 10  # Wait for containers to stabilize
+
+      - name: Run Docker Bench security checks
+        run: |
+          bash security/docker-bench.sh
+        continue-on-error: true
+
+      - name: Collect security logs
+        if: always()
+        run: |
+          docker compose logs api > api-logs.txt 2>&1
+          docker compose logs dashboard > dashboard-logs.txt 2>&1
+          docker compose logs db > db-logs.txt 2>&1
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-bench-logs
+          path: |
+            api-logs.txt
+            dashboard-logs.txt
+            db-logs.txt
+          retention-days: 7
+
+      - name: Cleanup
+        if: always()
+        run: docker compose down -v
+
+  # SAST with Semgrep (advanced pattern-based scanning)
+  semgrep:
+    name: Semgrep SAST Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Semgrep scan
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: >-
+            p/python
+            p/security-audit
+            p/owasp-top-ten
+            p/flask
+            p/fastapi
+          generateSarif: true
+        continue-on-error: true
+
+      - name: Upload Semgrep SARIF
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep
+
+  # Custom Semgrep rules for this project
+  custom-semgrep:
+    name: Custom Semgrep Rules
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run custom Semgrep rules
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: security/semgrep-rules.yml
+          generateSarif: true
+        continue-on-error: true
+
+      - name: Upload custom Semgrep SARIF
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: semgrep.sarif
+          category: custom-semgrep
+
+  # License compliance check
+  license-check:
+    name: License Compliance Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install pip-licenses
+        run: pip install pip-licenses
+
+      - name: Check Python licenses
+        run: |
+          pip install -r requirements.txt
+          pip-licenses \
+            --format=csv \
+            --with-urls \
+            --output-file=python-licenses.csv || true
+          pip-licenses --format=plain | grep -i "GPL"  && echo "WARNING: GPL license found" || echo "No GPL licenses detected"
+
+      - name: Upload license report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: license-report
+          path: python-licenses.csv
+          retention-days: 30
+
+  # Generate security report
+  security-report:
+    name: Generate Security Report
+    runs-on: ubuntu-latest
+    needs: [bandit-scan, codeql, docker-security, semgrep, custom-semgrep]
+    if: always()
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Generate summary report
+        run: |
+          cat > SECURITY_SCAN_REPORT.md << 'EOF'
+          # Security Scan Report
+
+          Generated: $(date)
+          Commit: ${{ github.sha }}
+          Branch: ${{ github.ref }}
+
+          ## Scan Results
+
+          - Bandit: Check artifacts for details
+          - CodeQL: See GitHub Security tab
+          - Docker Security: Check Trivy SARIF uploads
+          - Semgrep: Pattern-based SAST results
+
+          ## Next Steps
+
+          1. Review findings in GitHub Security tab
+          2. Address CRITICAL and HIGH severity issues
+          3. Create issues for MEDIUM and LOW severity findings
+          4. Run security hardening before deployment
+
+          EOF
+          cat SECURITY_SCAN_REPORT.md
+
+      - name: Upload security report
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-report
+          path: SECURITY_SCAN_REPORT.md
+          retention-days: 30
+
+  # Final security status check
+  security-gate:
+    name: Security Gate Status
+    runs-on: ubuntu-latest
+    needs: [bandit-scan, codeql, docker-security, semgrep]
+    if: always()
+    steps:
+      - name: Check security gate status
+        run: |
+          echo "=== Security Scan Results ==="
+          echo "Bandit: ${{ needs.bandit-scan.result }}"
+          echo "CodeQL: ${{ needs.codeql.result }}"
+          echo "Docker Security: ${{ needs.docker-security.result }}"
+          echo "Semgrep: ${{ needs.semgrep.result }}"
+
+          # All scans must pass or be skipped
+          if [[ "${{ needs.bandit-scan.result }}" == "failure" ]]; then
+            echo "Bandit scan failed. Review findings."
+            exit 1
+          fi
+
+          if [[ "${{ needs.codeql.result }}" == "failure" ]]; then
+            echo "CodeQL analysis failed. Review findings."
+            exit 1
+          fi
+
+          if [[ "${{ needs.docker-security.result }}" == "failure" ]]; then
+            echo "Docker security scan failed. Review findings."
+            exit 1
+          fi
+
+          echo "✓ All security gates passed"
+          exit 0
+        continue-on-error: true

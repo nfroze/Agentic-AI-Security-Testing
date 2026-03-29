@@ -1,0 +1,174 @@
+# Custom Semgrep Rules for Agentic AI Security Testing Platform
+# These rules target security issues specific to this security testing tool
+
+rules:
+  - id: no-hardcoded-api-keys-openai
+    pattern-either:
+      - patterns:
+          - pattern: |
+              $KEY = "sk-..."
+          - metavariable-pattern:
+              metavariable: $KEY
+              patterns:
+                - pattern: sk-
+      - patterns:
+          - pattern: |
+              api_key = "sk-..."
+          - metavariable-pattern:
+              metavariable: $1
+              patterns:
+                - pattern: sk-
+    message: "Hardcoded OpenAI API key detected. Use environment variables or AWS Secrets Manager."
+    languages: [python]
+    severity: ERROR
+    fix: |
+      api_key = os.environ.get("OPENAI_API_KEY")
+
+  - id: no-hardcoded-api-keys-anthropic
+    pattern-either:
+      - patterns:
+          - pattern: |
+              $KEY = "sk-ant-..."
+      - patterns:
+          - pattern: |
+              api_key = "sk-ant-..."
+    message: "Hardcoded Anthropic API key detected. Use environment variables or AWS Secrets Manager."
+    languages: [python]
+    severity: ERROR
+
+  - id: no-eval-exec
+    pattern-either:
+      - pattern: eval(...)
+      - pattern: exec(...)
+      - pattern: compile(..., mode="exec")
+    message: "Use of eval/exec is dangerous in a security testing tool. Consider safer alternatives."
+    languages: [python]
+    severity: ERROR
+
+  - id: no-pickle-deserialization
+    pattern: pickle.loads(...)
+    message: "Pickle deserialization is a known RCE vector. Use JSON or other safe serialization formats."
+    languages: [python]
+    severity: ERROR
+
+  - id: potential-sql-injection-fstring
+    pattern-either:
+      - pattern: |
+          $QUERY = f"... {$VAR} ..."
+          $DB.execute($QUERY)
+      - pattern: |
+          $QUERY = "... " + $VAR + " ..."
+          $DB.execute($QUERY)
+    message: "Potential SQL injection via f-string or string concatenation. Use parameterized queries."
+    languages: [python]
+    severity: WARNING
+
+  - id: no-debug-in-production
+    pattern-either:
+      - pattern: app.run(debug=True, ...)
+      - pattern: reload=True
+      - patterns:
+          - pattern: FastAPI(..., debug=True, ...)
+    message: "Debug/reload mode should not be enabled in production. Remove before deployment."
+    languages: [python]
+    severity: WARNING
+
+  - id: secrets-in-logs
+    pattern-either:
+      - pattern-inside: |
+          logger.$METHOD(...)
+      - pattern-inside: |
+          print(...)
+    patterns:
+      - pattern-either:
+          - pattern: $SECRET
+          - metavariable-pattern:
+              metavariable: $SECRET
+              patterns:
+                - pattern: sk-
+                - pattern: password
+                - pattern: api_key
+                - pattern: token
+    message: "Potential secret exposure in log output. Sanitize logs before output."
+    languages: [python]
+    severity: WARNING
+
+  - id: unsafe-yaml-load
+    pattern: yaml.load(...)
+    message: "yaml.load() is unsafe. Use yaml.safe_load() instead."
+    languages: [python]
+    severity: ERROR
+    fix: yaml.safe_load(...)
+
+  - id: unsafe-requests-verify
+    pattern-either:
+      - pattern: requests.$METHOD(..., verify=False, ...)
+      - pattern: httpx.$METHOD(..., verify=False, ...)
+    message: "Disabled SSL verification. Always verify SSL certificates in production."
+    languages: [python]
+    severity: HIGH
+
+  - id: hardcoded-database-credentials
+    pattern-either:
+      - pattern: |
+          database_url = "postgresql://...@..."
+      - pattern: |
+          db_password = "..."
+    message: "Hardcoded database credentials detected. Use environment variables."
+    languages: [python]
+    severity: CRITICAL
+
+  - id: missing-authentication-check
+    pattern-either:
+      - pattern: |
+          @app.route(..., methods=[...])
+          def $FUNC(...):
+              ...
+      - pattern: |
+          @fastapi_app.get(...)
+          def $FUNC(...):
+              ...
+    message: "API endpoint may be missing authentication check. Verify authorization is enforced."
+    languages: [python]
+    severity: HIGH
+
+  - id: no-os-system-calls
+    pattern: os.system(...)
+    message: "os.system() is unsafe. Use subprocess.run() with shell=False instead."
+    languages: [python]
+    severity: ERROR
+    fix: subprocess.run([...], shell=False)
+
+  - id: insecure-random
+    pattern-either:
+      - pattern: random.randint(...)
+      - pattern: random.choice(...)
+      - pattern: random.random()
+    message: "random module is not cryptographically secure. Use secrets module instead."
+    languages: [python]
+    severity: HIGH
+
+  - id: missing-cors-validation
+    pattern-either:
+      - pattern: CORSMiddleware(..., allow_origins=["*"], ...)
+      - pattern: cors_origins = "*"
+    message: "CORS allows all origins. Restrict to specific domains in production."
+    languages: [python]
+    severity: WARNING
+
+  - id: missing-rate-limiting
+    pattern-either:
+      - pattern-inside: |
+          @app.route(...)
+          def $FUNC(...):
+              ...
+      - pattern-inside: |
+          @fastapi_app.get(...)
+          def $FUNC(...):
+              ...
+    patterns:
+      - pattern-not: SlowAPI
+      - pattern-not: RateLimiter
+    message: "API endpoint may be missing rate limiting. Consider adding rate limit protection."
+    languages: [python]
+    severity: MEDIUM

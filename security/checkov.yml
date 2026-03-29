@@ -1,0 +1,32 @@
+# Checkov Configuration for Terraform Security Scanning
+# Detects security misconfigurations in IaC
+#
+# Reference: https://www.checkov.io/
+
+framework:
+  - terraform
+
+# Check categories to enable
+checks:
+  - CKV_AWS_*
+
+# Specific checks to skip with rationale
+skip-check:
+  # S3 Configuration Skips
+  - CKV_AWS_144  # S3 cross-region replication not needed for this project
+  - CKV_AWS_145  # S3 SSE-S3 sufficient; CMK encryption adds cost without proportional benefit
+
+  # EKS Configuration Skips
+  - CKV_AWS_38   # EKS control plane logs to CloudWatch; optional depending on compliance needs
+
+  # RDS Configuration Skips
+  - CKV_AWS_48   # RDS Multi-AZ is optional for non-production environments
+
+  # Other Infrastructure Skips
+  - CKV_AWS_63   # VPC Flow Logs optional but recommended; included in architecture
+
+# Soft fail mode (don't block CI)
+soft-fail: false
+
+# Report format
+output: sarif

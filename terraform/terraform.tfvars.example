@@ -1,0 +1,50 @@
+# Example Terraform variables file
+# Copy this to terraform.tfvars and update values as needed
+
+# AWS Configuration
+aws_region  = "eu-west-2"
+environment = "production"
+project_name = "agentic-security"
+
+# Networking
+vpc_cidr              = "10.0.0.0/16"
+public_subnet_cidrs   = ["10.0.1.0/24", "10.0.2.0/24"]
+private_subnet_cidrs  = ["10.0.10.0/24", "10.0.11.0/24"]
+
+# Database Configuration
+db_instance_class = "db.t3.micro"
+db_name           = "agentic_security"
+db_username       = "agentic_admin"
+rds_storage_size  = 20
+
+# Container Configuration
+api_container_port      = 8000
+dashboard_container_port = 8080
+api_cpu                 = 512
+api_memory              = 1024
+dashboard_cpu           = 256
+dashboard_memory        = 512
+
+# Deployment
+desired_count = 1
+enable_deletion_protection = false
+
+# Logging & Monitoring
+log_retention_days = 30
+
+# Optional: SSL/TLS Certificate (for HTTPS)
+# alb_certificate_arn = "arn:aws:acm:eu-west-2:ACCOUNT_ID:certificate/CERT_ID"
+
+# Optional: API Keys (normally set via AWS Console for security)
+# openai_api_key = "sk-..."
+# anthropic_api_key = "sk-ant-..."
+
+# Optional: Enable ALB access logging
+# enable_alb_logging = true
+
+# Additional tags
+tags = {
+  Owner      = "noah-frost"
+  Repository = "https://github.com/nfroze/Agentic-AI-Security-Testing"
+  Terraform  = "true"
+}

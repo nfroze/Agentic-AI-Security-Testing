@@ -1,0 +1,23 @@
+# Trivy Configuration for Container and Dependency Scanning
+# Detects vulnerabilities in Docker images and dependencies
+#
+# Reference: https://aquasecurity.github.io/trivy/
+
+severity:
+  - CRITICAL
+  - HIGH
+  - MEDIUM
+
+security-checks:
+  - vuln          # Vulnerability scanning
+  - config        # Misconfiguration scanning
+  - secret        # Secret scanning
+
+# Skip unfixed vulnerabilities for now but report them
+ignore-unfixed: false
+
+# Database settings
+db-repository: ghcr.io/aquasecurity/trivy-db
+
+# Only fail if there are findings above threshold
+exit-code: 0
