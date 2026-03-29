@@ -12,13 +12,15 @@ terraform {
     }
   }
 
-  backend "s3" {
-    bucket         = "agentic-security-tfstate"
-    key            = "infrastructure/terraform.tfstate"
-    region         = "eu-west-2"
-    encrypt        = true
-    dynamodb_table = "terraform-locks"
-  }
+  # Local backend for state management
+  # For production, migrate to S3 backend with:
+  #   backend "s3" {
+  #     bucket         = "agentic-security-tfstate"
+  #     key            = "infrastructure/terraform.tfstate"
+  #     region         = "eu-west-2"
+  #     encrypt        = true
+  #     dynamodb_table = "terraform-locks"
+  #   }
 }
 
 provider "aws" {
@@ -30,7 +32,7 @@ provider "aws" {
       ManagedBy   = "terraform"
       Environment = var.environment
       Owner       = "noah-frost"
-      CreatedAt   = timestamp()
+      Repository  = "agentic-ai-security-testing"
     }
   }
 }

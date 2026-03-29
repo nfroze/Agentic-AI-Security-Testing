@@ -2,7 +2,7 @@
 resource "aws_db_instance" "main" {
   identifier              = "${var.project_name}-db"
   engine                  = "postgres"
-  engine_version          = "15.4"
+  engine_version          = "15"
   instance_class          = var.db_instance_class
   allocated_storage       = var.rds_storage_size
   storage_type            = "gp3"
@@ -31,7 +31,7 @@ resource "aws_db_instance" "main" {
   # Monitoring
   enabled_cloudwatch_logs_exports = ["postgresql"]
   monitoring_interval             = 0 # Disable enhanced monitoring to reduce costs
-  enable_performance_insights      = false
+  performance_insights_enabled     = false
 
   # Security
   iam_database_authentication_enabled = false # Optional, requires additional setup

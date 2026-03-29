@@ -152,15 +152,18 @@ async def general_exception_handler(request, exc):
 
 # Health check endpoint
 @app.get("/", tags=["health"])
+@app.get("/health", tags=["health"])
 async def health_check() -> HealthResponse:
     """Health check endpoint.
 
     Returns:
         Health status and version.
     """
+    from datetime import datetime, timezone
     return HealthResponse(
         status="healthy",
         version=__version__,
+        timestamp=datetime.now(timezone.utc),
     )
 
 

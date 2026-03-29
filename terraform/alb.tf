@@ -78,18 +78,12 @@ resource "aws_s3_bucket_policy" "alb_logs" {
 # Get ELB service account for the region (for ALB logging)
 data "aws_elb_service_account" "main" {}
 
-# ALB Access Logs Configuration
-resource "aws_lb" "main_logs" {
-  count = var.enable_alb_logging ? 1 : 0
-
-  name_prefix = substr(replace(var.project_name, "-", ""), 0, 6)
-  # Reference existing ALB (workaround since we can't modify it after creation)
-  # This is a placeholder; ALB logging would be configured on the ALB itself
-}
+# Note: ALB access logging is configured via the access_logs block
+# on the primary aws_lb.main resource when enable_alb_logging = true.
 
 # Target Group for API
 resource "aws_lb_target_group" "api" {
-  name_prefix = substr(replace(var.project_name, "-", ""), 0, 6)
+  name_prefix = "api-"
   port        = var.api_container_port
   protocol    = "HTTP"
   vpc_id      = aws_vpc.main.id
@@ -114,7 +108,7 @@ resource "aws_lb_target_group" "api" {
 
 # Target Group for Dashboard
 resource "aws_lb_target_group" "dashboard" {
-  name_prefix = substr(replace(var.project_name, "-", ""), 0, 6)
+  name_prefix = "dash-"
   port        = var.dashboard_container_port
   protocol    = "HTTP"
   vpc_id      = aws_vpc.main.id
@@ -218,8 +212,5 @@ resource "aws_lb_listener_rule" "http_api_routing" {
   }
 }
 
-# Drop invalid headers at ALB (security hardening)
-resource "aws_lb" "main" {
-  # Note: ALB drop_invalid_header_fields is deprecated in favor of preserve_client_ip
-  # Enable modern security settings if possible via update
-}
+# Note: ALB security hardening (drop_invalid_header_fields) is configured
+# on the primary aws_lb.main resource above.

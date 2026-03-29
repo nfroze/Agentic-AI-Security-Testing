@@ -13,8 +13,7 @@
 # (Defined in ecs.tf as aws_iam_role_policy.ecs_task_execution_ecr_secrets)
 
 # ===== Data sources for account information =====
-
-data "aws_caller_identity" "current" {}
+# Note: aws_caller_identity.current is defined in main.tf
 
 # ===== Policy: Deny root user actions (optional, for extra security) =====
 # Uncomment below to enforce additional guardrails

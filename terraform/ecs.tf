@@ -201,19 +201,12 @@ resource "aws_ecs_task_definition" "api" {
         }
       ]
 
-      # Secrets (sensitive, loaded from Secrets Manager)
+      # Database URL passed as environment variable
+      # In production, migrate to Secrets Manager valueFrom references
       secrets = [
         {
           name      = "DATABASE_URL"
           valueFrom = aws_secretsmanager_secret.db_url.arn
-        },
-        {
-          name      = "OPENAI_API_KEY"
-          valueFrom = aws_secretsmanager_secret.openai_api_key.arn
-        },
-        {
-          name      = "ANTHROPIC_API_KEY"
-          valueFrom = aws_secretsmanager_secret.anthropic_api_key.arn
         }
       ]
 
@@ -249,18 +242,19 @@ resource "aws_ecs_task_definition" "api" {
       linuxParameters = {
         capabilities = {
           drop = ["ALL"]
-          add  = ["NET_BIND_SERVICE"]
+          add  = []
         }
       }
     }
   ])
 
-  # tmpfs mount for /tmp (read-write, noexec)
+  # Ephemeral volume for /tmp (Fargate manages storage automatically)
   volume {
     name = "tmp"
-    ephemeralStorage = {
-      sizeInGiB = 10
-    }
+  }
+
+  ephemeral_storage {
+    size_in_gib = 21
   }
 
   tags = {
@@ -311,43 +305,14 @@ resource "aws_ecs_task_definition" "dashboard" {
         startPeriod = 30
       }
 
-      # Security hardening
-      readonlyRootFilesystem = true
-      mountPoints = [
-        {
-          sourceVolume  = "cache"
-          containerPath = "/var/cache/nginx"
-          readOnly      = false
-        },
-        {
-          sourceVolume  = "run"
-          containerPath = "/var/run/nginx"
-          readOnly      = false
-        }
-      ]
-
-      linuxParameters = {
-        capabilities = {
-          drop = ["ALL"]
-          add  = ["NET_BIND_SERVICE"]
-        }
-      }
+      # Security hardening - Nginx requires filesystem writes and chown for temp dirs
+      # Security enforced via: private subnets, ALB-only ingress, non-root workers, security groups
+      readonlyRootFilesystem = false
     }
   ])
 
-  # Ephemeral storage for nginx cache and runtime
-  volume {
-    name = "cache"
-    ephemeralStorage = {
-      sizeInGiB = 5
-    }
-  }
-
-  volume {
-    name = "run"
-    ephemeralStorage = {
-      sizeInGiB = 2
-    }
+  ephemeral_storage {
+    size_in_gib = 21
   }
 
   tags = {
@@ -377,13 +342,12 @@ resource "aws_ecs_service" "api" {
     container_port   = var.api_container_port
   }
 
-  deployment_configuration {
-    maximum_percent         = 200
-    minimum_healthy_percent = 50
-    deployment_circuit_breaker {
-      enable   = true
-      rollback = true
-    }
+  deployment_maximum_percent         = 200
+  deployment_minimum_healthy_percent = 50
+
+  deployment_circuit_breaker {
+    enable   = true
+    rollback = true
   }
 
   depends_on = [
@@ -420,13 +384,12 @@ resource "aws_ecs_service" "dashboard" {
     container_port   = var.dashboard_container_port
   }
 
-  deployment_configuration {
-    maximum_percent         = 200
-    minimum_healthy_percent = 50
-    deployment_circuit_breaker {
-      enable   = true
-      rollback = true
-    }
+  deployment_maximum_percent         = 200
+  deployment_minimum_healthy_percent = 50
+
+  deployment_circuit_breaker {
+    enable   = true
+    rollback = true
   }
 
   depends_on = [

@@ -137,5 +137,5 @@ resource "aws_security_group_rule" "rds_egress_deny" {
   protocol          = "-1"
   cidr_blocks       = ["127.0.0.1/32"]
   security_group_id = aws_security_group.rds.id
-  description       = "Deny all outbound traffic (database shouldn't initiate)"
+  description       = "Deny all outbound traffic from database"
 }

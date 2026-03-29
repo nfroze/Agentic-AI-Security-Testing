@@ -182,11 +182,94 @@ resource "aws_iam_role_policy" "vpc_flow_logs" {
 
 # RDS subnet group (ensures subnets span multiple AZs)
 resource "aws_db_subnet_group" "main" {
-  name_prefix            = "${var.project_name}-db-"
-  subnet_ids             = aws_subnet.private[*].id
-  skip_final_snapshot    = false
+  name_prefix = "${var.project_name}-db-"
+  subnet_ids  = aws_subnet.private[*].id
 
   tags = {
     Name = "${var.project_name}-db-subnet-group"
+  }
+}
+
+# VPC Endpoints for ECS tasks in private subnets
+# These allow ECS to pull images and secrets without NAT Gateway
+
+resource "aws_security_group" "vpc_endpoints" {
+  name_prefix = "${var.project_name}-vpce-"
+  description = "Security group for VPC endpoints"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    from_port       = 443
+    to_port         = 443
+    protocol        = "tcp"
+    security_groups = [aws_security_group.ecs.id]
+    description     = "Allow HTTPS from ECS tasks"
+  }
+
+  tags = {
+    Name = "${var.project_name}-vpce-sg"
+  }
+}
+
+resource "aws_vpc_endpoint" "secretsmanager" {
+  vpc_id              = aws_vpc.main.id
+  service_name        = "com.amazonaws.${var.aws_region}.secretsmanager"
+  vpc_endpoint_type   = "Interface"
+  private_dns_enabled = true
+  subnet_ids          = aws_subnet.private[*].id
+  security_group_ids  = [aws_security_group.vpc_endpoints.id]
+
+  tags = {
+    Name = "${var.project_name}-secretsmanager-vpce"
+  }
+}
+
+resource "aws_vpc_endpoint" "ecr_api" {
+  vpc_id              = aws_vpc.main.id
+  service_name        = "com.amazonaws.${var.aws_region}.ecr.api"
+  vpc_endpoint_type   = "Interface"
+  private_dns_enabled = true
+  subnet_ids          = aws_subnet.private[*].id
+  security_group_ids  = [aws_security_group.vpc_endpoints.id]
+
+  tags = {
+    Name = "${var.project_name}-ecr-api-vpce"
+  }
+}
+
+resource "aws_vpc_endpoint" "ecr_dkr" {
+  vpc_id              = aws_vpc.main.id
+  service_name        = "com.amazonaws.${var.aws_region}.ecr.dkr"
+  vpc_endpoint_type   = "Interface"
+  private_dns_enabled = true
+  subnet_ids          = aws_subnet.private[*].id
+  security_group_ids  = [aws_security_group.vpc_endpoints.id]
+
+  tags = {
+    Name = "${var.project_name}-ecr-dkr-vpce"
+  }
+}
+
+resource "aws_vpc_endpoint" "s3" {
+  vpc_id            = aws_vpc.main.id
+  service_name      = "com.amazonaws.${var.aws_region}.s3"
+  vpc_endpoint_type = "Gateway"
+  route_table_ids   = [aws_route_table.private.id]
+
+  tags = {
+    Name = "${var.project_name}-s3-vpce"
+  }
+}
+
+resource "aws_vpc_endpoint" "logs" {
+  vpc_id              = aws_vpc.main.id
+  service_name        = "com.amazonaws.${var.aws_region}.logs"
+  vpc_endpoint_type   = "Interface"
+  private_dns_enabled = true
+  subnet_ids          = aws_subnet.private[*].id
+  security_group_ids  = [aws_security_group.vpc_endpoints.id]
+
+  tags = {
+    Name = "${var.project_name}-logs-vpce"
   }
 }

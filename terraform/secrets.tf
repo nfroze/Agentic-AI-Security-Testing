@@ -1,6 +1,6 @@
 # Construct database URL from RDS endpoint
 locals {
-  database_url = "postgresql://${var.db_username}:${random_password.db_password.result}@${aws_db_instance.main.endpoint}/${var.db_name}"
+  database_url = "postgresql+asyncpg://${var.db_username}:${random_password.db_password.result}@${aws_db_instance.main.endpoint}/${var.db_name}"
 }
 
 # Store database URL in Secrets Manager

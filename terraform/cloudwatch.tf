@@ -1,7 +1,7 @@
 # SNS Topic for CloudWatch Alarm Notifications
 resource "aws_sns_topic" "alarms" {
-  name_prefix = "${var.project_name}-alarms-"
-  description = "Notifications for ${var.project_name} CloudWatch alarms"
+  name_prefix  = "${var.project_name}-alarms-"
+  display_name = "Notifications for ${var.project_name} CloudWatch alarms"
 
   tags = {
     Name = "${var.project_name}-alarms"

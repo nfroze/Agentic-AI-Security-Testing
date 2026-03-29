@@ -45,6 +45,9 @@ resource "aws_s3_bucket_lifecycle_configuration" "reports" {
     id     = "archive-reports"
     status = "Enabled"
 
+    filter {}
+
+
     # Transition to Infrequent Access after 90 days
     transition {
       days          = 90

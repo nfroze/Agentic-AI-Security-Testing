@@ -34,6 +34,9 @@ COPY --from=builder /build/pyproject.toml .
 # Copy payload files
 COPY payloads/ ./payloads/
 
+# Set Python path to find modules in src/
+ENV PYTHONPATH=/app/src
+
 # Set ownership to appuser
 RUN chown -R appuser:appuser /app && \
     find /app -type f -executable ! -path "*/.*" -exec chmod u+x {} \;
