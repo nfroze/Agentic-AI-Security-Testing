@@ -137,6 +137,12 @@ class TestSuiteResult(BaseModel):
             "high_count": sum(
                 1 for r in self.results if r.success and r.severity == Severity.HIGH
             ),
+            "medium_count": sum(
+                1 for r in self.results if r.success and r.severity == Severity.MEDIUM
+            ),
+            "low_count": sum(
+                1 for r in self.results if r.success and r.severity == Severity.LOW
+            ),
         }
 
     class Config:

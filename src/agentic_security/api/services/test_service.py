@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import sys
 from datetime import datetime
 from typing import Optional
 from uuid import uuid4
@@ -17,12 +18,16 @@ from ...results.models import TestResult, TestRun
 from ...scorers.base import BaseScorer
 from ...scorers.canary_scorer import CanaryScorer
 from ...scorers.composite import CompositeScorer
-from ...scorers.llm_judge import LLMJudgeScorer
 from ...scorers.pattern_scorer import PatternScorer
 from ..schemas import TestRunCreate, TestRunResponse
 from .target_service import TargetService
 
 logger = logging.getLogger(__name__)
+
+# Module-level set to prevent background tasks from being garbage-collected.
+# Python 3.11's asyncio uses a WeakSet for task tracking, so without an
+# external strong reference the task can disappear mid-execution.
+_background_tasks: set[asyncio.Task] = set()
 
 
 class TestService:
@@ -36,7 +41,6 @@ class TestService:
         """
         self.db = db
         self._target_service = TargetService(db)
-        self._running_tests: dict[str, asyncio.Task] = {}
 
     async def create_and_run_test(self, request: TestRunCreate) -> str:
         """Create a test run and start execution.
@@ -67,7 +71,7 @@ class TestService:
                 target_name=target.model_name,
                 category=",".join(attack_categories) if attack_categories else "ALL",
                 status=TestStatus.PENDING.code,
-                metadata={
+                metadata_dict={
                     "target_id": request.target_id,
                     "test_mode": request.test_mode,
                     "scorer_type": request.scorer_type,
@@ -77,7 +81,8 @@ class TestService:
             self.db.add(db_test_run)
             await self.db.commit()
 
-        # Start test execution as background task
+        # Start test execution as background task.
+        # Store in module-level set to prevent GC (Python 3.11 WeakSet issue).
         task = asyncio.create_task(
             self._execute_test(
                 test_id=test_id,
@@ -89,7 +94,8 @@ class TestService:
                 canary_strings=request.canary_strings,
             )
         )
-        self._running_tests[test_id] = task
+        _background_tasks.add(task)
+        task.add_done_callback(_background_tasks.discard)
 
         logger.info(f"Created and started test run: {test_id}")
         return test_id
@@ -114,7 +120,7 @@ class TestService:
             return None
 
         # Get target info
-        target_id = db_test_run.metadata.get("target_id") if db_test_run.metadata else None
+        target_id = db_test_run.metadata_dict.get("target_id") if db_test_run.metadata_dict else None
         target = None
         if target_id:
             target = await self._target_service.get_target(target_id)
@@ -201,28 +207,31 @@ class TestService:
         return result.scalar_one_or_none()
 
     async def cancel_test_run(self, test_id: str) -> bool:
-        """Cancel a running test.
+        """Cancel a running test by updating its status.
+
+        Note: Background tasks are tracked in a module-level set without
+        a mapping from test_id → task, so we cannot cancel the asyncio
+        task directly.  We mark it CANCELLED in the DB; the running task
+        will see the updated status on its next DB read or simply finish.
 
         Args:
             test_id: Test run ID.
 
         Returns:
-            True if cancelled, False if not running.
+            True if status was updated, False if test not found.
         """
-        if test_id not in self._running_tests:
+        if not self.db:
             return False
 
-        task = self._running_tests[test_id]
-        task.cancel()
+        stmt = select(TestRun).where(TestRun.id == test_id)
+        result = await self.db.execute(stmt)
+        db_test_run = result.scalar_one_or_none()
 
-        # Update status in database
-        if self.db:
-            stmt = select(TestRun).where(TestRun.id == test_id)
-            result = await self.db.execute(stmt)
-            db_test_run = result.scalar_one_or_none()
-            if db_test_run:
-                db_test_run.status = TestStatus.CANCELLED.code
-                await self.db.commit()
+        if not db_test_run or db_test_run.status != TestStatus.RUNNING.code:
+            return False
+
+        db_test_run.status = TestStatus.CANCELLED.code
+        await self.db.commit()
 
         logger.info(f"Cancelled test run: {test_id}")
         return True
@@ -239,40 +248,60 @@ class TestService:
     ) -> None:
         """Execute a test run (background task).
 
-        Args:
-            test_id: Test run ID.
-            target_id: Target ID.
-            attack_categories: Categories to test (empty = all).
-            test_mode: Test mode (single_turn, multi_turn).
-            max_concurrent: Max concurrent attacks.
-            scorer_type: Scorer type to use.
-            canary_strings: Optional canary strings for canary scorer.
+        Creates its own DB session because the request-scoped session
+        will be closed after the HTTP response is sent.
+
+        All setup (imports, session creation) is inside the try/except
+        so that any failure is caught and logged rather than killing
+        the task silently.
         """
+        # Force-flush prints so they appear in CloudWatch / docker logs
+        print(f"[_execute_test] ENTRY — test_id={test_id}", flush=True)
+        logger.info(f"[_execute_test] ENTRY — test_id={test_id}")
+
+        db = None
         try:
+            # --- Session creation (inside try so failures are caught) ---
+            # Use `import module; module.attr` pattern to always read the
+            # current value of the module-level variable, not a stale copy.
+            import agentic_security.api.dependencies as deps
+
+            _global_db = deps._db_instance
+            if _global_db and _global_db.SessionLocal:
+                db = _global_db.SessionLocal()
+                logger.info(f"[_execute_test] Got DB session for {test_id}")
+            else:
+                logger.error(f"[_execute_test] No DB instance available for {test_id}")
+
             # Update status to RUNNING
-            if self.db:
+            if db:
                 stmt = select(TestRun).where(TestRun.id == test_id)
-                result = await self.db.execute(stmt)
+                result = await db.execute(stmt)
                 db_test_run = result.scalar_one_or_none()
                 if db_test_run:
                     db_test_run.status = TestStatus.RUNNING.code
                     db_test_run.started_at = datetime.utcnow()
-                    await self.db.commit()
+                    await db.commit()
+                    logger.info(f"[_execute_test] Status set to RUNNING for {test_id}")
 
-            # Get target instance
-            target = await self._target_service._get_target_instance(target_id)
+            # Get target instance using a fresh TargetService with the new session
+            target_service = TargetService(db)
+            target = await target_service._get_target_instance(target_id)
             if not target:
                 raise ValueError(f"Target {target_id} not found")
 
-            # Get attack modules
-            if attack_categories:
-                attacks = []
-                for category in attack_categories:
-                    attacks.extend(AttackRegistry.get_by_category(category))
-            else:
-                attacks = list(AttackRegistry.list_attacks().values())
+            logger.info(f"[_execute_test] Got target instance for {target_id}")
 
-            logger.info(f"Running {len(attacks)} attacks for test {test_id}")
+            # Get attack modules (registry returns classes, need instances)
+            if attack_categories:
+                attack_classes = []
+                for category in attack_categories:
+                    attack_classes.extend(AttackRegistry.get_by_category(category))
+            else:
+                attack_classes = list(AttackRegistry.list_attacks().values())
+
+            attacks = [cls() for cls in attack_classes]
+            logger.info(f"[_execute_test] Running {len(attacks)} attacks for test {test_id}")
 
             # Create scorer
             scorer = self._create_scorer(scorer_type, canary_strings)
@@ -283,13 +312,18 @@ class TestService:
 
             suite_result = await orchestrator.run_suite(attacks, target, scorer)
 
+            logger.info(
+                f"[_execute_test] Suite finished for {test_id}: "
+                f"{len(suite_result.results)} results"
+            )
+
             # Store results
-            if self.db:
+            if db:
                 for attack_result in suite_result.results:
                     result_record = TestResult(
                         test_run_id=test_id,
                         payload_id=attack_result.payload.id,
-                        payload_category=str(attack_result.payload.category),
+                        payload_category=attack_result.payload.category.code,
                         technique=attack_result.payload.technique,
                         target_response=attack_result.target_response,
                         success=int(attack_result.success),
@@ -298,49 +332,60 @@ class TestService:
                         execution_time_ms=attack_result.execution_time_ms,
                         scorer_details=attack_result.scorer_details,
                     )
-                    self.db.add(result_record)
+                    db.add(result_record)
 
-                await self.db.commit()
+                await db.commit()
 
                 # Update test run with results
                 stmt = select(TestRun).where(TestRun.id == test_id)
-                result = await self.db.execute(stmt)
+                result = await db.execute(stmt)
                 db_test_run = result.scalar_one_or_none()
                 if db_test_run:
                     db_test_run.status = TestStatus.COMPLETED.code
                     db_test_run.completed_at = datetime.utcnow()
                     db_test_run.summary = suite_result.summary
-                    await self.db.commit()
+                    await db.commit()
 
             logger.info(
-                f"Test run {test_id} completed: "
+                f"[_execute_test] Test run {test_id} completed: "
                 f"{suite_result.summary['passed']} passed, "
                 f"{suite_result.summary['failed']} failed"
             )
 
         except asyncio.CancelledError:
-            logger.info(f"Test run {test_id} cancelled")
-            if self.db:
-                stmt = select(TestRun).where(TestRun.id == test_id)
-                result = await self.db.execute(stmt)
-                db_test_run = result.scalar_one_or_none()
-                if db_test_run:
-                    db_test_run.status = TestStatus.CANCELLED.code
-                    await self.db.commit()
+            logger.info(f"[_execute_test] Test run {test_id} cancelled")
+            if db:
+                try:
+                    stmt = select(TestRun).where(TestRun.id == test_id)
+                    result = await db.execute(stmt)
+                    db_test_run = result.scalar_one_or_none()
+                    if db_test_run:
+                        db_test_run.status = TestStatus.CANCELLED.code
+                        await db.commit()
+                except Exception as db_err:
+                    logger.error(f"[_execute_test] Failed to update cancelled status: {db_err}")
 
         except Exception as e:
-            logger.error(f"Test run {test_id} failed: {e}", exc_info=True)
-            if self.db:
-                stmt = select(TestRun).where(TestRun.id == test_id)
-                result = await self.db.execute(stmt)
-                db_test_run = result.scalar_one_or_none()
-                if db_test_run:
-                    db_test_run.status = TestStatus.FAILED.code
-                    db_test_run.completed_at = datetime.utcnow()
-                    if db_test_run.metadata is None:
-                        db_test_run.metadata = {}
-                    db_test_run.metadata["error"] = str(e)
-                    await self.db.commit()
+            logger.error(f"[_execute_test] Test run {test_id} failed: {e}", exc_info=True)
+            print(f"[_execute_test] EXCEPTION — test_id={test_id}: {e}", flush=True)
+            if db:
+                try:
+                    stmt = select(TestRun).where(TestRun.id == test_id)
+                    result = await db.execute(stmt)
+                    db_test_run = result.scalar_one_or_none()
+                    if db_test_run:
+                        db_test_run.status = TestStatus.FAILED.code
+                        db_test_run.completed_at = datetime.utcnow()
+                        if db_test_run.metadata_dict is None:
+                            db_test_run.metadata_dict = {}
+                        db_test_run.metadata_dict["error"] = str(e)
+                        await db.commit()
+                except Exception as db_err:
+                    logger.error(f"[_execute_test] Failed to update error status: {db_err}")
+
+        finally:
+            if db:
+                await db.close()
 
     @staticmethod
     def _create_scorer(
@@ -361,12 +406,14 @@ class TestService:
         if scorer_type == "pattern":
             return PatternScorer()
         elif scorer_type == "llm_judge":
-            return LLMJudgeScorer()
+            # LLM judge requires a configured judge target; fall back to pattern scorer
+            logger.warning("LLM judge scorer requires a judge target; falling back to pattern scorer")
+            return PatternScorer()
         elif scorer_type == "canary":
             if not canary_strings:
                 canary_strings = ["JAILBREAK_SUCCESSFUL", "CONFIRMED"]
             return CanaryScorer(canary_strings=canary_strings)
         elif scorer_type == "composite":
-            return CompositeScorer()
+            return CompositeScorer(scorers=[(PatternScorer(), 1.0)])
         else:
             raise ValueError(f"Unsupported scorer type: {scorer_type}")

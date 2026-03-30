@@ -53,7 +53,7 @@ class PromptInjectionAttack(BaseAttack):
 
     async def load_payloads(self) -> list[AttackPayload]:
         """Load prompt injection payloads from YAML file."""
-        payloads_dir = Path(__file__).parent.parent.parent.parent / "payloads"
+        payloads_dir = Path(__file__).parent.parent.parent.parent.parent / "payloads"
         payload_file = payloads_dir / "llm01_prompt_injection.yaml"
 
         if not payload_file.exists():

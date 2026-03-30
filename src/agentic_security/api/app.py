@@ -1,8 +1,16 @@
 """Main FastAPI application."""
 
 import logging
+import sys
 from contextlib import asynccontextmanager
 from typing import Optional
+
+# Configure logging to stdout so CloudWatch captures it
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    stream=sys.stdout,
+)
 
 from fastapi import FastAPI, status
 from fastapi.exceptions import RequestValidationError

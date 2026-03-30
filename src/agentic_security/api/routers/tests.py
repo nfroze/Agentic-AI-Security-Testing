@@ -75,7 +75,7 @@ async def list_tests(
     from sqlalchemy.future import select
 
     from ...results.models import TestRun
-    from .target_service import TargetService
+    from ..services.target_service import TargetService
 
     if not db:
         return []
@@ -99,7 +99,7 @@ async def list_tests(
     target_service = TargetService(db)
 
     for db_test_run in db_test_runs:
-        metadata = db_test_run.metadata or {}
+        metadata = db_test_run.metadata_dict or {}
         test_target_id = metadata.get("target_id")
 
         target = None

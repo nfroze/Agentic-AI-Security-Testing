@@ -66,7 +66,7 @@ class SensitiveInfoDisclosureAttack(BaseAttack):
 
     async def load_payloads(self) -> list[AttackPayload]:
         """Load sensitive info disclosure payloads from YAML file."""
-        payloads_dir = Path(__file__).parent.parent.parent.parent / "payloads"
+        payloads_dir = Path(__file__).parent.parent.parent.parent.parent / "payloads"
         payload_file = payloads_dir / "llm02_sensitive_info_disclosure.yaml"
 
         if not payload_file.exists():

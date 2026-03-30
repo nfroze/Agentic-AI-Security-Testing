@@ -65,8 +65,9 @@ class TargetService:
                 provider=request.provider,
                 model_name=request.model_name,
                 endpoint_url=request.endpoint_url,
-                metadata={
+                metadata_dict={
                     "name": request.name,
+                    "api_key": request.api_key,
                     "max_tokens": request.max_tokens,
                     "temperature": request.temperature,
                     "custom_headers": request.custom_headers,
@@ -106,7 +107,7 @@ class TargetService:
             if not db_target:
                 return None
 
-            metadata = db_target.metadata or {}
+            metadata = db_target.metadata_dict or {}
             return TargetResponse(
                 id=db_target.id,
                 name=metadata.get("name", "Unknown"),
@@ -132,7 +133,7 @@ class TargetService:
             db_targets = result.scalars().all()
 
             for db_target in db_targets:
-                metadata = db_target.metadata or {}
+                metadata = db_target.metadata_dict or {}
                 targets.append(
                     TargetResponse(
                         id=db_target.id,
@@ -169,7 +170,7 @@ class TargetService:
             return None
 
         # Update metadata
-        metadata = db_target.metadata or {}
+        metadata = db_target.metadata_dict or {}
         if request.name:
             metadata["name"] = request.name
         if request.max_tokens:
@@ -190,7 +191,7 @@ class TargetService:
         if request.provider:
             db_target.provider = request.provider
 
-        db_target.metadata = metadata
+        db_target.metadata_dict = metadata
         await self.db.commit()
 
         # Invalidate cache
@@ -275,11 +276,16 @@ class TargetService:
             return None
 
         # Reconstruct TargetCreate from database
-        metadata = db_target.metadata or {}
+        metadata = db_target.metadata_dict or {}
+        api_key = metadata.get("api_key")
+        if not api_key:
+            logger.error(f"No API key stored for target {target_id}")
+            return None
+
         request = TargetCreate(
             name=metadata.get("name", db_target.model_name),
             endpoint_url=db_target.endpoint_url,
-            api_key="***",  # Can't recover, would need to be replaced during update
+            api_key=api_key,
             model_name=db_target.model_name,
             provider=db_target.provider,
             max_tokens=metadata.get("max_tokens", 2000),
@@ -310,7 +316,7 @@ class TargetService:
             endpoint_url=request.endpoint_url,
             api_key=request.api_key,
             model_name=request.model_name,
-            provider=TargetProvider(request.provider),
+            provider=next(p for p in TargetProvider if p.code == request.provider.lower()),
             max_tokens=request.max_tokens,
             temperature=request.temperature,
         )

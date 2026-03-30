@@ -112,7 +112,7 @@ export const Dashboard = () => {
         </div>
         {recentTests.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-state-icon">📊</div>
+
             <div className="empty-state-title">No test runs yet</div>
             <div className="empty-state-text">Start by configuring a target and running your first test</div>
             <button className="btn-success" onClick={() => navigate('/targets')}>
@@ -159,8 +159,7 @@ export const Dashboard = () => {
 
       {error && (
         <div className="error-message">
-          <span className="error-icon">⚠️</span>
-          {error}
+                    {error}
         </div>
       )}
     </div>

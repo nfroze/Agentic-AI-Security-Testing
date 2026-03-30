@@ -174,14 +174,13 @@ export const TestRunner = () => {
 
         {error && (
           <div className="error-message">
-            <span className="error-icon">⚠️</span>
-            {error}
+                        {error}
           </div>
         )}
 
         {targets.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-state-icon">🎯</div>
+
             <div className="empty-state-title">No targets available</div>
             <div className="empty-state-text">Configure a target before running tests</div>
           </div>

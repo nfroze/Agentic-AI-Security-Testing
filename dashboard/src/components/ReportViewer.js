@@ -17,7 +17,7 @@ const ExpandableFinding = ({ category }) => {
   return (
     <div
       style={{
-        borderLeft: '4px solid var(--accent-blue)',
+        borderLeft: '2px solid var(--accent-green)',
         paddingLeft: '16px',
         marginBottom: '16px',
       }}
@@ -40,7 +40,7 @@ const ExpandableFinding = ({ category }) => {
           ▼
         </span>
         <div style={{ flex: 1 }}>
-          <h4 style={{ margin: '0 0 4px 0' }}>{category.category_code}: {category.category_name}</h4>
+          <h4 style={{ margin: '0 0 4px 0', fontFamily: "'JetBrains Mono', monospace", fontSize: '14px' }}><span style={{ color: 'var(--accent-green)', opacity: 0.7 }}>{category.category_code}</span>: {category.category_name}</h4>
           <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>
             {category.category_description}
           </p>
@@ -83,10 +83,11 @@ const ExpandableFinding = ({ category }) => {
             <div style={{
               marginTop: '16px',
               padding: '12px',
-              backgroundColor: 'var(--bg-primary)',
-              borderRadius: '4px',
+              backgroundColor: '#0a0a0a',
+              borderRadius: '3px',
+              border: '1px solid #222',
             }}>
-              <h5 style={{ margin: '0 0 8px 0', color: 'var(--accent-blue)' }}>Recommendations</h5>
+              <h5 style={{ margin: '0 0 8px 0', color: 'var(--accent-blue)', fontFamily: "'JetBrains Mono', monospace", fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Recommendations</h5>
               <ul style={{
                 margin: 0,
                 padding: '0 0 0 20px',
@@ -164,8 +165,7 @@ export const ReportViewer = () => {
   if (!report) {
     return (
       <div className="error-message">
-        <span className="error-icon">⚠️</span>
-        Report not available. Test may still be running.
+                Report not available. Test may still be running.
       </div>
     );
   }
@@ -205,18 +205,37 @@ export const ReportViewer = () => {
           <h3 className="card-title">Executive Summary</h3>
         </div>
         <div style={{ padding: '16px' }}>
-          <div className="grid-2">
-            {report.summary && Object.entries(report.summary).map(([key, value]) => (
-              <div key={key} style={{ padding: '12px', backgroundColor: 'var(--bg-tertiary)', borderRadius: '6px' }}>
-                <div style={{ fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-                  {key.replace(/_/g, ' ')}
-                </div>
-                <div style={{ fontSize: '24px', fontWeight: 700, color: 'var(--text-primary)' }}>
-                  {typeof value === 'number' ? Math.round(value * 100) / 100 : value}
-                </div>
+          {report.summary && (() => {
+            const s = report.summary;
+            const defended = s.failed || 0;
+            const vulnerable = s.passed || 0;
+            const total = s.total || 0;
+            const defenceRate = total === 0 ? 0 : Math.round((defended / total) * 100 * 100) / 100;
+            const summaryItems = [
+              { label: 'Total Tests', value: total, color: 'var(--text-primary)' },
+              { label: 'Passed', value: defended, color: 'var(--accent-green)' },
+              { label: 'Failed', value: vulnerable, color: 'var(--severity-critical)' },
+              { label: 'Pass Rate', value: `${defenceRate}%`, color: 'var(--text-primary)' },
+              { label: 'Critical', value: s.critical_count || 0, color: 'var(--severity-critical)' },
+              { label: 'High', value: s.high_count || 0, color: 'var(--severity-high)' },
+              { label: 'Medium', value: s.medium_count || 0, color: 'var(--severity-medium)' },
+              { label: 'Low', value: s.low_count || 0, color: 'var(--severity-low)' },
+            ];
+            return (
+              <div className="grid-2">
+                {summaryItems.map((item) => (
+                  <div key={item.label} style={{ padding: '12px', backgroundColor: 'var(--bg-primary)', borderRadius: '3px', border: '1px solid var(--border-color)' }}>
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', textTransform: 'uppercase', letterSpacing: '1px', color: '#555', marginBottom: '4px' }}>
+                      {item.label}
+                    </div>
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '24px', fontWeight: 700, color: item.color }}>
+                      {item.value}
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            );
+          })()}
         </div>
       </div>
 
@@ -256,8 +275,7 @@ export const ReportViewer = () => {
 
       {error && (
         <div className="error-message">
-          <span className="error-icon">⚠️</span>
-          {error}
+                    {error}
         </div>
       )}
     </div>

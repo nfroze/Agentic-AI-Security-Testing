@@ -133,8 +133,7 @@ export const TargetManager = () => {
 
         {error && (
           <div className="error-message">
-            <span className="error-icon">⚠️</span>
-            {error}
+                        {error}
           </div>
         )}
 
@@ -142,8 +141,7 @@ export const TargetManager = () => {
           <form onSubmit={handleSubmit} style={{ padding: '16px', borderBottom: '1px solid var(--border-color)', marginBottom: '16px' }}>
             {formError && (
               <div className="error-message">
-                <span className="error-icon">⚠️</span>
-                {formError}
+                                {formError}
               </div>
             )}
 
@@ -261,7 +259,7 @@ export const TargetManager = () => {
 
         {targets.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-state-icon">🎯</div>
+
             <div className="empty-state-title">No targets configured</div>
             <div className="empty-state-text">Add an AI system target to begin testing</div>
           </div>

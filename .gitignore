@@ -64,6 +64,16 @@ screenshots/
 logs/
 *.log
 
+# Node / Dashboard
+node_modules/
+dashboard/node_modules/
+dashboard/build/
+dashboard/.env
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+
 # Build artifacts
 dist/
 build/

@@ -77,7 +77,7 @@ class SystemPromptLeakageAttack(BaseAttack):
 
     async def load_payloads(self) -> list[AttackPayload]:
         """Load system prompt leakage payloads from YAML file."""
-        payloads_dir = Path(__file__).parent.parent.parent.parent / "payloads"
+        payloads_dir = Path(__file__).parent.parent.parent.parent.parent / "payloads"
         payload_file = payloads_dir / "llm07_system_prompt_leakage.yaml"
 
         if not payload_file.exists():

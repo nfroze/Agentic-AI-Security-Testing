@@ -40,50 +40,55 @@ const ExpandableResultRow = ({ result }) => {
         </td>
         <td>
           {result.success ? (
-            <span style={{ color: 'var(--accent-red)' }}>✗ Failed</span>
+            <span style={{ color: 'var(--accent-red)', fontFamily: "'JetBrains Mono', monospace", fontWeight: 600 }}>FAIL</span>
           ) : (
-            <span style={{ color: 'var(--accent-green)' }}>✓ Passed</span>
+            <span style={{ color: 'var(--accent-green)', fontFamily: "'JetBrains Mono', monospace", fontWeight: 600 }}>PASS</span>
           )}
         </td>
-        <td>{Math.round(result.confidence * 100)}%</td>
         <td>{result.execution_time_ms}ms</td>
       </tr>
       {expanded && (
         <tr>
-          <td colSpan="6">
+          <td colSpan="5">
             <div className="expanded-content">
               <div style={{ marginBottom: '12px' }}>
-                <h4 style={{ margin: '0 0 8px 0' }}>Category Description</h4>
+                <h4 style={{ margin: '0 0 8px 0', fontFamily: "'JetBrains Mono', monospace", fontSize: '12px', color: 'var(--accent-blue)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Category Description</h4>
                 <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '13px' }}>
                   {result.owasp_category_description}
                 </p>
               </div>
               <div style={{ marginBottom: '12px' }}>
-                <h4 style={{ margin: '0 0 8px 0' }}>Payload (Truncated)</h4>
+                <h4 style={{ margin: '0 0 8px 0', fontFamily: "'JetBrains Mono', monospace", fontSize: '12px', color: 'var(--accent-blue)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Payload (Truncated)</h4>
                 <pre style={{
-                  backgroundColor: 'var(--bg-primary)',
-                  padding: '8px',
-                  borderRadius: '4px',
+                  backgroundColor: '#0a0a0a',
+                  padding: '12px',
+                  borderRadius: '3px',
                   fontSize: '11px',
+                  fontFamily: "'JetBrains Mono', monospace",
                   overflow: 'auto',
                   maxHeight: '200px',
                   margin: 0,
-                  color: 'var(--text-secondary)',
+                  color: 'var(--accent-green)',
+                  border: '1px solid #222',
+                  lineHeight: '1.6',
                 }}>
                   {result.payload_content}
                 </pre>
               </div>
               <div>
-                <h4 style={{ margin: '0 0 8px 0' }}>Response (Truncated)</h4>
+                <h4 style={{ margin: '0 0 8px 0', fontFamily: "'JetBrains Mono', monospace", fontSize: '12px', color: 'var(--accent-blue)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Response (Truncated)</h4>
                 <pre style={{
-                  backgroundColor: 'var(--bg-primary)',
-                  padding: '8px',
-                  borderRadius: '4px',
+                  backgroundColor: '#0a0a0a',
+                  padding: '12px',
+                  borderRadius: '3px',
                   fontSize: '11px',
+                  fontFamily: "'JetBrains Mono', monospace",
                   overflow: 'auto',
                   maxHeight: '200px',
                   margin: 0,
-                  color: 'var(--text-secondary)',
+                  color: '#888',
+                  border: '1px solid #222',
+                  lineHeight: '1.6',
                 }}>
                   {result.target_response || 'No response'}
                 </pre>
@@ -126,7 +131,7 @@ export const TestResults = () => {
 
     loadTest();
 
-    const interval = setInterval(loadTest, 5000);
+    const interval = setInterval(loadTest, 60000);
     return () => clearInterval(interval);
   }, [testId]);
 
@@ -136,7 +141,7 @@ export const TestResults = () => {
 
       try {
         setResultsLoading(true);
-        const data = await api.getTestResults(testId, { page, page_size: 20 });
+        const data = await api.getTestResults(testId, { page: 1, page_size: 500 });
         setResults(data.items || []);
         setTotalPages(data.pages || 1);
       } catch (err) {
@@ -163,8 +168,8 @@ export const TestResults = () => {
     return results.filter(result => {
       if (filterCategory && result.owasp_category !== filterCategory) return false;
       if (filterSeverity && result.severity !== filterSeverity) return false;
-      if (filterStatus === 'success' && !result.success) return false;
-      if (filterStatus === 'failed' && result.success) return false;
+      if (filterStatus === 'passed' && result.success) return false;
+      if (filterStatus === 'vulnerable' && !result.success) return false;
       return true;
     });
   };
@@ -178,21 +183,22 @@ export const TestResults = () => {
   if (!test) {
     return (
       <div className="error-message">
-        <span className="error-icon">⚠️</span>
-        Test not found
+                Test not found
       </div>
     );
   }
 
-  const successCount = results.filter(r => !r.success).length;
-  const failureCount = results.filter(r => r.success).length;
-  const passRate = results.length === 0 ? 0 : Math.round((failureCount / results.length) * 100);
+  // Use the full test run summary (all pages), not just the current page of results
+  const totalTests = test.summary?.total || results.length;
+  const passedCount = test.summary?.fail_count || results.filter(r => !r.success).length;   // Model defended = passed
+  const failedCount = test.summary?.pass_count || results.filter(r => r.success).length;    // Model vulnerable = failed
+  const passRate = totalTests === 0 ? 0 : Math.round((passedCount / totalTests) * 100);
 
   const severityBreakdown = {
-    critical: results.filter(r => r.severity === 'CRITICAL').length,
-    high: results.filter(r => r.severity === 'HIGH').length,
-    medium: results.filter(r => r.severity === 'MEDIUM').length,
-    low: results.filter(r => r.severity === 'LOW').length,
+    critical: test.summary?.critical_count || results.filter(r => r.severity === 'CRITICAL').length,
+    high: test.summary?.high_count || results.filter(r => r.severity === 'HIGH').length,
+    medium: test.summary?.medium_count || results.filter(r => r.severity === 'MEDIUM').length,
+    low: test.summary?.low_count || results.filter(r => r.severity === 'LOW').length,
   };
 
   const totalSeverity = Object.values(severityBreakdown).reduce((a, b) => a + b, 0);
@@ -220,8 +226,8 @@ export const TestResults = () => {
             )}
             {test.status === 'COMPLETED' && (
               <button
-                className="btn-success"
                 onClick={() => navigate(`/reports/${testId}`)}
+                style={{ backgroundColor: 'var(--accent-blue)', color: '#000' }}
               >
                 View Report
               </button>
@@ -236,18 +242,18 @@ export const TestResults = () => {
       <div className="summary-grid" style={{ marginBottom: '20px' }}>
         <div className="summary-card">
           <div className="summary-card-label">Total Tests</div>
-          <div className="summary-card-value">{results.length}</div>
+          <div className="summary-card-value">{totalTests}</div>
         </div>
         <div className="summary-card">
           <div className="summary-card-label">Passed</div>
           <div className="summary-card-value" style={{ color: 'var(--accent-green)' }}>
-            {failureCount}
+            {passedCount}
           </div>
         </div>
         <div className="summary-card">
           <div className="summary-card-label">Failed</div>
           <div className="summary-card-value" style={{ color: 'var(--severity-critical)' }}>
-            {successCount}
+            {failedCount}
           </div>
         </div>
         <div className="summary-card">
@@ -374,8 +380,8 @@ export const TestResults = () => {
                 }}
               >
                 <option value="">All Results</option>
-                <option value="failed">Failed (Vulnerable)</option>
-                <option value="success">Passed (Safe)</option>
+                <option value="passed">Passed (Defended)</option>
+                <option value="vulnerable">Failed (Vulnerable)</option>
               </select>
             </div>
           </div>
@@ -385,7 +391,6 @@ export const TestResults = () => {
           <LoadingSpinner text="Loading results..." />
         ) : results.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-state-icon">⏳</div>
             <div className="empty-state-title">Waiting for results</div>
             <div className="empty-state-text">
               {test.status === 'RUNNING'
@@ -395,7 +400,6 @@ export const TestResults = () => {
           </div>
         ) : filteredResults.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-state-icon">🔍</div>
             <div className="empty-state-title">No matching results</div>
             <div className="empty-state-text">Try adjusting your filters</div>
           </div>
@@ -409,7 +413,6 @@ export const TestResults = () => {
                     <th>OWASP Category</th>
                     <th>Severity</th>
                     <th>Result</th>
-                    <th>Confidence</th>
                     <th>Time</th>
                   </tr>
                 </thead>
@@ -457,8 +460,7 @@ export const TestResults = () => {
 
       {error && (
         <div className="error-message" style={{ marginTop: '16px' }}>
-          <span className="error-icon">⚠️</span>
-          {error}
+                    {error}
         </div>
       )}
     </div>

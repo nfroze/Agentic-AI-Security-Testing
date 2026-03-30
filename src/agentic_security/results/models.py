@@ -20,7 +20,7 @@ class TestRun(Base):
 
     id = Column(String(64), primary_key=True)
     target_name = Column(String(255), index=True)
-    category = Column(String(64), index=True)
+    category = Column(Text, index=True)
     status = Column(String(32), default="PENDING")
     started_at = Column(DateTime, default=datetime.utcnow, index=True)
     completed_at = Column(DateTime, nullable=True)

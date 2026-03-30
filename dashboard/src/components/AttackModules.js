@@ -184,7 +184,7 @@ export const AttackModules = () => {
 
         {filteredAttacks.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-state-icon">🔍</div>
+
             <div className="empty-state-title">No attacks found</div>
             <div className="empty-state-text">Try adjusting your filters or search terms</div>
           </div>
@@ -200,9 +200,11 @@ export const AttackModules = () => {
                   border: '1px solid var(--border-color)',
                   marginBottom: 0,
                 }}
+                onMouseEnter={(e) => e.currentTarget.style.borderColor = '#444'}
+                onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--border-color)'}
               >
                 <div className="card-header" style={{ marginBottom: '12px' }}>
-                  <h4 className="card-title" style={{ margin: 0, fontSize: '16px' }}>
+                  <h4 className="card-title" style={{ margin: 0, fontSize: '14px' }}>
                     {attack.name}
                   </h4>
                 </div>
@@ -246,7 +248,7 @@ export const AttackModules = () => {
         <div style={{ padding: '16px' }}>
           <div className="grid-2">
             <div>
-              <h4 style={{ margin: '0 0 12px 0', color: 'var(--accent-blue)' }}>OWASP LLM Top 10</h4>
+              <h4 style={{ margin: '0 0 12px 0', color: 'var(--accent-green)', fontFamily: "'JetBrains Mono', monospace", fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>OWASP LLM Top 10</h4>
               <ul style={{
                 listStyle: 'none',
                 padding: 0,
@@ -280,7 +282,7 @@ export const AttackModules = () => {
             </div>
 
             <div>
-              <h4 style={{ margin: '0 0 12px 0', color: 'var(--accent-blue)' }}>OWASP Agentic Top 10</h4>
+              <h4 style={{ margin: '0 0 12px 0', color: 'var(--accent-green)', fontFamily: "'JetBrains Mono', monospace", fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>OWASP Agentic Top 10</h4>
               <ul style={{
                 listStyle: 'none',
                 padding: 0,

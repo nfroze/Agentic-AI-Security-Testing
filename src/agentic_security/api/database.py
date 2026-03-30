@@ -51,7 +51,7 @@ class Database:
             autoflush=False,
         )
 
-        # Create all tables
+        # Create tables if they don't exist (preserves existing data)
         async with self.engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
 
