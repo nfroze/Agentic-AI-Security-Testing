@@ -1,0 +1,147 @@
+direction down
+
+Users [icon: users, label: "Users / Security Engineers"]
+GitHub [icon: github, label: "GitHub"]
+
+// CI/CD Pipelines
+CI/CD Pipelines [icon: github] {
+  CI Pipeline [icon: git-branch, label: "CI Pipeline"] {
+    Lint & Type Check [icon: terminal, label: "Lint / Type Check"]
+    Security Scans [icon: shield, label: "SAST / Secrets / Deps"]
+    Unit Tests [icon: terminal, label: "Unit Tests"]
+    Build & Trivy [icon: docker, label: "Build & Trivy Scan"]
+    Integration Tests [icon: terminal, label: "Integration Tests"]
+    Status Gate [icon: lock, label: "Status Gate"]
+  }
+  Security Pipeline [icon: shield, label: "Security Pipeline"] {
+    Bandit [icon: terminal, label: "Bandit SAST"]
+    CodeQL [icon: terminal, label: "CodeQL"]
+    Semgrep [icon: terminal, label: "Semgrep"]
+    Docker Bench [icon: docker, label: "Docker Bench"]
+    Checkov [icon: terraform, label: "Checkov IaC"]
+    Security Gate [icon: lock, label: "Security Gate"]
+  }
+}
+
+// Container Registry
+ECR [icon: aws-ecr, label: "ECR"] {
+  API Image [icon: docker, label: "API Image"]
+  Dashboard Image [icon: docker, label: "Dashboard Image"]
+}
+
+// Main VPC
+VPC [icon: aws-vpc, label: "VPC 10.0.0.0/16"] {
+
+  Internet Gateway [icon: aws-internet-gateway]
+
+  Public Subnets [icon: aws-subnet, label: "Public Subnets"] {
+    ALB [icon: aws-alb, label: "Application Load Balancer"]
+    NAT Gateway [icon: aws-nat-gateway]
+  }
+
+  Private Subnets [icon: aws-subnet, label: "Private Subnets"] {
+
+    ECS Cluster [icon: aws-ecs, label: "ECS Fargate Cluster"] {
+      API Service [icon: aws-ecs, label: "API Service (FastAPI)"]
+      Dashboard Service [icon: aws-ecs, label: "Dashboard Service (React/Nginx)"]
+    }
+
+    RDS [icon: aws-rds, label: "PostgreSQL RDS"]
+
+    VPC Endpoints [icon: cloud, label: "VPC Endpoints"] {
+      ECR Endpoint [icon: aws-vpc, label: "ECR API/DKR"]
+      Secrets Endpoint [icon: aws-vpc, label: "Secrets Manager"]
+      S3 Endpoint [icon: aws-vpc, label: "S3 Gateway"]
+      Logs Endpoint [icon: aws-vpc, label: "CloudWatch Logs"]
+    }
+  }
+}
+
+// Storage & Secrets
+AWS Services [icon: cloud] {
+  S3 Reports [icon: aws-s3, label: "S3 Reports Bucket"]
+  Secrets Manager [icon: aws-secrets-manager, label: "Secrets Manager"] {
+    DB URL Secret [icon: key, label: "DB URL"]
+    OpenAI Key [icon: key, label: "OpenAI API Key"]
+    Anthropic Key [icon: key, label: "Anthropic API Key"]
+  }
+}
+
+// Monitoring
+Monitoring [icon: aws-cloudwatch, label: "Monitoring & Alerting"] {
+  CloudWatch [icon: aws-cloudwatch, label: "CloudWatch"] {
+    API Logs [icon: aws-cloudwatch, label: "API Logs"]
+    Dashboard Logs [icon: aws-cloudwatch, label: "Dashboard Logs"]
+    VPC Flow Logs [icon: aws-cloudwatch, label: "VPC Flow Logs"]
+    CW Dashboard [icon: aws-cloudwatch, label: "CloudWatch Dashboard"]
+  }
+  Alarms [icon: aws-cloudwatch, label: "Metric Alarms"]
+  SNS Topic [icon: aws-sns, label: "SNS Alarm Topic"]
+}
+
+// Target AI Systems (external)
+Target AI Systems [icon: globe, label: "Target AI Systems"] {
+  OpenAI API [icon: server, label: "OpenAI API"]
+  Anthropic API [icon: server, label: "Anthropic API"]
+  Custom Endpoints [icon: server, label: "Custom Endpoints"]
+}
+
+// --- Connections ---
+
+// User flow
+Users > ALB: "HTTPS"
+GitHub > CI Pipeline
+GitHub > Security Pipeline
+
+// CI/CD flow
+Lint & Type Check > Unit Tests
+Security Scans > Build & Trivy
+Unit Tests > Integration Tests
+Build & Trivy > Status Gate
+Integration Tests > Status Gate
+Bandit > Security Gate
+CodeQL > Security Gate
+Semgrep > Security Gate
+Docker Bench > Security Gate
+Checkov > Security Gate
+Build & Trivy > API Image: "pushes"
+Build & Trivy > Dashboard Image: "pushes"
+
+// ALB routing
+Internet Gateway > ALB
+ALB > API Service: "/api/*"
+ALB > Dashboard Service: "default"
+
+// ECS pulls images
+API Service < API Image: "pulls"
+Dashboard Service < Dashboard Image: "pulls"
+
+// Private subnet outbound
+ECS Cluster > NAT Gateway: "outbound HTTPS"
+
+// Database
+API Service > RDS: "PostgreSQL:5432"
+
+// Storage
+API Service > S3 Reports: "writes reports"
+
+// Secrets
+API Service < Secrets Manager: "reads credentials"
+
+// VPC Endpoints (private access)
+ECS Cluster > ECR Endpoint
+ECS Cluster > Secrets Endpoint
+ECS Cluster > S3 Endpoint
+ECS Cluster > Logs Endpoint
+
+// Monitoring
+API Service --> API Logs: "sends logs"
+Dashboard Service --> Dashboard Logs: "sends logs"
+VPC > VPC Flow Logs
+Alarms > SNS Topic: "triggers"
+Alarms < ALB: "monitors"
+Alarms < ECS Cluster: "monitors"
+Alarms < RDS: "monitors"
+
+// AI target systems
+API Service > Target AI Systems: "sends attack payloads"

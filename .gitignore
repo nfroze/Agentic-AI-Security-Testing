@@ -59,7 +59,6 @@ dmypy.json
 
 # Project-specific
 CLAUDE.md
-screenshots/
 /results/
 logs/
 *.log
