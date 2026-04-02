@@ -1,6 +1,6 @@
 # Agentic AI Security Testing
 
-An end-to-end security testing platform that probes AI agents and LLM applications against the OWASP Top 10 for LLMs (2025) and the OWASP Top 10 for Agentic AI Systems (2026), deployed on AWS infrastructure provisioned with Terraform.
+An end-to-end security testing platform that probes AI agents and LLM applications against the OWASP Top 10 for LLM Applications 2025 and the OWASP Top 10 for Agentic Applications 2026, deployed on AWS infrastructure provisioned with Terraform.
 
 ## Overview
 
@@ -70,11 +70,11 @@ The attack library uses a plugin-style registry with auto-discovery — each att
 
 **Test Results (Passed Filter)** — Filtered view showing only defended attacks where the target successfully blocked prompt injection, context breaking, memory poisoning, and other techniques.
 
-![](screenshots/test-results-passed-filter.png)
+![](screenshots/test-results-passed.png)
 
 **Test Results (Failed Filter)** — Filtered view showing only vulnerable findings with severity breakdown, isolating the 10 attacks that bypassed the target's defences.
 
-![](screenshots/test-results-failed-filter.png)
+![](screenshots/test-results-failed.png)
 
 **Security Report (Risk Score)** — Assessment report with a risk score of 100 (Critical), executive summary metrics, and findings grouped by OWASP category including Improper Output Handling, Excessive Agency, and System Prompt Leakage.
 
